@@ -1,0 +1,15 @@
+flake8
+black
+fastapi
+uvicorn
+pydantic
+requests
+boto3
+pymongo
+motor
+beanie
+python-dotenv
+python-multipart
+selenium
+webdriver-manager
+pdfkit
