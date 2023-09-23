@@ -73,6 +73,8 @@ async def store_file(file: UploadFile = File(...)
             print(f"PDF saved at static folder : {file_path}")
             try: 
                 s3_uri = _upload_to_s3(file_path, 'bitamin-video-storage')
+                
+                # model inference with s3_uri
 
                 end_time = time.time()
                 loading_time = end_time - start_time

@@ -19,7 +19,8 @@ class MongoDB:
     _DATABASE_URI = os.getenv("DATABASE_URI")
     _DATABASE_USERNAME = os.getenv("DATABASE_USERNAME")
     _DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD")
-    _DATABASE_NAME = os.getenv("DATABASE_NAME", "test")
+    # default db -> test
+    _DATABASE_NAME = os.getenv("DATABASE_NAME", "handsign_db")
 
     _username = quote_plus(_DATABASE_USERNAME)
     _password = quote_plus(_DATABASE_PASSWORD)
@@ -46,7 +47,6 @@ class MongoDB:
         if self.client:
             self.client.close()
             logger.info("DB 커넥션 종료.")
-
 
 # 몽고 디비 싱글톤 패턴
 mongodb = MongoDB()
