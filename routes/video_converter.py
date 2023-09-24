@@ -12,6 +12,8 @@ try:
     # 3rd party library 관련
     import boto3
     from dotenv import load_dotenv
+    
+    import logging
 
     print("All Modules are loaded")
 
@@ -59,18 +61,22 @@ async def store_file(file: UploadFile = File(...)
     import time
 
     start_time = time.time()
-        
+    logging.info('video save start')
+    print('video save start')
+    # mp4, mov
     # Use NamedTemporaryFile inside the static directory
     with NamedTemporaryFile(
-        mode='w+b', suffix='.mp4', dir='static', delete=False) as temp_file:
+        mode='w+b', suffix='.mov', dir='static', delete=False) as temp_file:
         file_path = temp_file.name
         print(file_path)
+        logging.info(file_path)
         try:
             with open(file_path, "wb") as outfile:
                 for chunk in file.file:
                     outfile.write(chunk)
                 
-            print(f"PDF saved at static folder : {file_path}")
+            print(f"video saved at static folder : {file_path}")
+            logging.info(f"video saved at static folder : {file_path}")
             try: 
                 s3_uri = _upload_to_s3(file_path, 'bitamin-video-storage')
                 

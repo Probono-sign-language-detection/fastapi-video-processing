@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -25,12 +26,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
+@app.get("/", response_class=JSONResponse, status_code=200)
 async def read_root() -> Dict[str, str]:
     '''
     api health check를 위한 API
     '''
-    return {"Hello": "World"}
+    return {"response": "Hello World"}
 
 @app.on_event("startup")
 async def on_app_start():
