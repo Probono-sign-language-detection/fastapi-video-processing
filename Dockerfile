@@ -7,9 +7,10 @@ ENV APP_HOME=/app
 # 필요한 패키지 복사
 COPY requirements.txt ./
 
-# pdf, vim 설치
+# pdf, vim ffmpeg 설치
 RUN apt-get update && apt-get install -y bash && apt-get install -y build-essential\
     && apt-get install -y libgl1-mesa-glx vim\
+    && apt-get install -y ffmpeg \  
     && apt-get install -y wkhtmltopdf \
     && rm -rf /var/lib/apt/lists/*
 

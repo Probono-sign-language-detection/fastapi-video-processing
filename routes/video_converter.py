@@ -14,6 +14,7 @@ try:
     from dotenv import load_dotenv
     
     import logging
+    import subprocess
 
     print("All Modules are loaded")
 
@@ -51,6 +52,12 @@ def _upload_to_s3(file_path: str, bucket_name: str, object_name: str = None) -> 
         print(f"An error occurred: {e}")
         raise e
 
+
+def _convert_mov_to_mp4(input_file: str, output_file: str):
+    command = ['ffmpeg', '-i', input_file, output_file]
+    subprocess.run(command)
+
+
 @converter_router.post("/save_upload_s3/", response_class=JSONResponse, status_code=201)
 async def store_file(file: UploadFile = File(...)
     ) -> Dict[str, Union[str, bool]]:
@@ -70,6 +77,7 @@ async def store_file(file: UploadFile = File(...)
         file_path = temp_file.name
         print(file_path)
         logging.info(file_path)
+        
         try:
             with open(file_path, "wb") as outfile:
                 for chunk in file.file:
@@ -77,8 +85,13 @@ async def store_file(file: UploadFile = File(...)
                 
             print(f"video saved at static folder : {file_path}")
             logging.info(f"video saved at static folder : {file_path}")
+            
+            # Convert .mov to .mp4
+            mp4_file_path = file_path.replace('.mov', '.mp4')
+            _convert_mov_to_mp4(file_path, mp4_file_path)
+            
             try: 
-                s3_uri = _upload_to_s3(file_path, 'bitamin-video-storage')
+                s3_uri = _upload_to_s3(mp4_file_path, 'bitamin-video-storage')
                 
                 # model inference with s3_uri
 
@@ -99,9 +112,11 @@ async def store_file(file: UploadFile = File(...)
                 raise HTTPException(status_code=500, detail=f"Error during saving to s3: {e}")
 
         except Exception as e:
-            # If there's an error, clean up the temporary file if it was created
+            # If there's an error, clean up the temporary files if they were created
             if os.path.exists(file_path):
                 os.remove(file_path)
-            raise HTTPException(status_code=500, detail=f"Error during saving: {e}")
+            if os.path.exists(mp4_file_path):
+                os.remove(mp4_file_path)
+            raise HTTPException(status_code=500, detail=f"Error during saving to s3: {e}")
             
 
