@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routes.video_converter import converter_router
 from routes.beanie_crud import crud_router
+from routes.user import user_router
 
 from typing import Dict
 
@@ -12,9 +13,11 @@ from config.motor_connection import mongodb
 
 import asyncio
 import logging
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
+load_dotenv('.env')
 
 app = FastAPI()
 
@@ -51,4 +54,6 @@ async def on_app_shutdown():
 app.include_router(converter_router, prefix="/v1/video")
 
 app.include_router(crud_router, prefix="/v1/crud")
+
+app.include_router(user_router, prefix="/v1/user")
 

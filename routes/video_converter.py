@@ -7,6 +7,7 @@ try:
     # requests 관련
     import requests
     from requests.exceptions import RequestException
+    
     import os
 
     # 3rd party library 관련
@@ -59,7 +60,8 @@ def _convert_mov_to_mp4(input_file: str, output_file: str):
 
 
 @converter_router.post("/save_upload_s3/", response_class=JSONResponse, status_code=201)
-async def store_file(file: UploadFile = File(...)
+async def store_file(
+    file: UploadFile = File(...)
     ) -> Dict[str, Union[str, bool]]:
     '''
     upload video save into aws s3 using boto3
@@ -74,24 +76,24 @@ async def store_file(file: UploadFile = File(...)
     # Use NamedTemporaryFile inside the static directory
     with NamedTemporaryFile(
         mode='w+b', suffix='.mov', dir='static', delete=False) as temp_file:
-        file_path = temp_file.name
-        print(file_path)
-        logging.info(file_path)
+        mov_file_path = temp_file.name
+        print(mov_file_path)
+        logging.info(mov_file_path)
         
         try:
-            with open(file_path, "wb") as outfile:
+            with open(mov_file_path, "wb") as outfile:
                 for chunk in file.file:
                     outfile.write(chunk)
                 
-            print(f"video saved at static folder : {file_path}")
-            logging.info(f"video saved at static folder : {file_path}")
+            print(f"video saved at static folder : {mov_file_path}")
+            logging.info(f"video saved at static folder : {mov_file_path}")
             
             # Convert .mov to .mp4
-            mp4_file_path = file_path.replace('.mov', '.mp4')
-            _convert_mov_to_mp4(file_path, mp4_file_path)
+            # mp4_file_path = file_path.replace('.mov', '.mp4')
+            # _convert_mov_to_mp4(file_path, mp4_file_path)
             
-            try: 
-                s3_uri = _upload_to_s3(mp4_file_path, 'bitamin-video-storage')
+            try:
+                s3_uri = _upload_to_s3(mov_file_path, 'bitamin-video-storage')
                 
                 # model inference with s3_uri
 
@@ -113,10 +115,10 @@ async def store_file(file: UploadFile = File(...)
 
         except Exception as e:
             # If there's an error, clean up the temporary files if they were created
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            if os.path.exists(mp4_file_path):
-                os.remove(mp4_file_path)
+            if os.path.exists(mov_file_path):
+                os.remove(mov_file_path)
+            if os.path.exists(mov_file_path):
+                os.remove(mov_file_path)
             raise HTTPException(status_code=500, detail=f"Error during saving to s3: {e}")
             
 

@@ -4,6 +4,7 @@ from typing import Optional, List, Any
 from beanie import init_beanie
 
 from models.video import VideoDataModel
+from models.user import User
 
 from urllib.parse import quote_plus
 import logging
@@ -37,7 +38,7 @@ class MongoDB:
             database = self.client[self._DATABASE_NAME]
             await init_beanie(
                 database=database,
-                document_models=[VideoDataModel, ],
+                document_models=[VideoDataModel, User],
                 )
             logger.info("데이터베이스에 성공적으로 연결이 되었습니다.")
         except Exception as e:
