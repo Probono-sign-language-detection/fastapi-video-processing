@@ -59,8 +59,11 @@ def _convert_mov_to_mp4(input_file: str, output_file: str):
     subprocess.run(command)
 
 
-@converter_router.post("/save_upload_s3/", response_class=JSONResponse, status_code=201)
+@converter_router.post("/save_upload_s3/", 
+                       response_class=JSONResponse, 
+                       status_code=201)
 async def store_file(
+    username: Optional[str] = Body(None),
     file: UploadFile = File(...)
     ) -> Dict[str, Union[str, bool]]:
     '''
