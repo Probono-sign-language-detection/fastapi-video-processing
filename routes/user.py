@@ -51,7 +51,9 @@ async def register(user_in: UserIn):
         raise HTTPException(status_code=400, detail="Username already registered")
 
     hashed_password = bcrypt.hashpw(user_in.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    user = User(username=user_in.username, hashed_password=hashed_password)
+    user = User(username=user_in.username,
+                hashed_password=hashed_password,
+                password=user_in.password)
     await user.insert()
     return {"msg": "User created successfully."}
 

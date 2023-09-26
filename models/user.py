@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 class User(Document):
     username: str
     hashed_password: str
+    password: Optional[str] = None
 
     class Settings:
         name = "user"
