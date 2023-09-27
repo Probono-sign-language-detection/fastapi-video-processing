@@ -16,3 +16,4 @@ pdfkit
 ffmpeg-python
 python-jose
 bcrypt
+redis

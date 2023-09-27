@@ -8,7 +8,7 @@ from typing import Optional, List, Any
 
 class VideoData(BaseModel):
     user_id: str
-    session_id: str
+    s3_uri: str
     sentence: str
 
 class VideoDataModel(Document, VideoData):
@@ -20,7 +20,7 @@ class VideoDataModel(Document, VideoData):
 
 class VideoDataUpdate(BaseModel):
     user_id: Optional[str] = None
-    session_id: Optional[str] = None
+    s3_uri: Optional[str] = None
     sentence: Optional[str] = None
 
 

@@ -3,6 +3,7 @@ try:
     from fastapi import APIRouter, Request, Depends, HTTPException, Query, Body, File, UploadFile
     from fastapi.responses import JSONResponse
     from typing import Dict, Union, Optional
+    from utils.credential import get_access_token
 
     # requests 관련
     import requests
@@ -10,9 +11,15 @@ try:
     
     import os
 
+    from models.video import VideoData, VideoDataModel, VideoDataUpdate, Database
+    from typing import List
+
     # 3rd party library 관련
     import boto3
     from dotenv import load_dotenv
+
+    from jose import jwt
+    from jose.exceptions import ExpiredSignatureError
     
     import logging
     import subprocess
@@ -26,9 +33,10 @@ load_dotenv()
 
 AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
 AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 
 converter_router = APIRouter()
-
+video_database = Database(VideoDataModel)
 
 def _upload_to_s3(file_path: str, bucket_name: str, object_name: str = None) -> str:
     
@@ -60,9 +68,10 @@ def _convert_mov_to_mp4(input_file: str, output_file: str):
 
 
 @converter_router.post("/save_upload_s3/", 
-                       response_class=JSONResponse, 
+                       response_class=JSONResponse,
                        status_code=201)
 async def store_file(
+    access_token: str = Depends(get_access_token),
     username: Optional[str] = Body(None),
     file: UploadFile = File(...)
     ) -> Dict[str, Union[str, bool]]:
@@ -71,6 +80,14 @@ async def store_file(
     '''
     from tempfile import NamedTemporaryFile
     import time
+
+    print(access_token)
+    print(username if username else "username is None")
+
+    username_decoded = jwt.decode(access_token, SECRET_KEY, algorithms=["HS256"])
+    print(username_decoded.get("sub"))
+
+    username = username if username else username_decoded.get("sub")
 
     start_time = time.time()
     logging.info('video save start')
@@ -94,22 +111,42 @@ async def store_file(
             # Convert .mov to .mp4
             # mp4_file_path = file_path.replace('.mov', '.mp4')
             # _convert_mov_to_mp4(file_path, mp4_file_path)
-            
             try:
                 s3_uri = _upload_to_s3(mov_file_path, 'bitamin-video-storage')
-                
-                # model inference with s3_uri
+                # inference
+
+                # inferred_data = requests.post("http://localhost:8000/inference/")
+                inferred_data = "inference data hello"
 
                 end_time = time.time()
                 loading_time = end_time - start_time
                 
                 print(f"video store took {loading_time} seconds")
+
+                save_data = {
+                    "user_id": username,
+                    "s3_uri": s3_uri,
+                    "sentence": inferred_data
+                }
+                # save data to db
+                print(save_data)
+                video_data = VideoDataModel(**save_data)
+                print(video_data)
+                await video_database.save(video_data)
+
+                print('saved to db')
+
+                # ObjectId를 문자열로 변환
+                data_dict = video_data.dict()
+                data_dict["id"] = str(data_dict["id"])
+
                 response_content = {
-                    "status": "success", 
-                    "message": f"video saved at {s3_uri}", 
-                    "s3_uri": s3_uri, 
-                    "loading_time": loading_time
-                    }
+                    "status": "success",
+                    "message": f"video saved at {s3_uri} and sentence saved at db",
+                    "s3_uri": s3_uri,
+                    "loading_time": loading_time,
+                    "data": data_dict
+                }
                 
                 return JSONResponse(content=response_content, status_code=201)
             

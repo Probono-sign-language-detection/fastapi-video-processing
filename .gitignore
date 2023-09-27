@@ -3,6 +3,7 @@ venv2
 changes.patch 
 
 .DS_Store
+.idea/*
 
 static/*
 

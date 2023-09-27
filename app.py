@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes.video_converter import converter_router
 from routes.beanie_crud import crud_router
 from routes.user import user_router
+from routes.chat import chat_router
+
 
 from typing import Dict
 
@@ -57,3 +59,4 @@ app.include_router(crud_router, prefix="/v1/crud")
 
 app.include_router(user_router, prefix="/v1/user")
 
+app.include_router(chat_router, prefix="/v1/user")

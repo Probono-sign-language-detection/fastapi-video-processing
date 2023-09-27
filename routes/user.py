@@ -17,20 +17,21 @@ from beanie import init_beanie
 from beanie.odm.documents import Document
 from beanie.odm.fields import PydanticObjectId
 
-from models.user import User, UserIn, UserOut
+from models.user import User, UserIn
 import os
 
 user_router = APIRouter()
-
-security = HTTPBearer()
 
 ALGORITHM = "HS256"
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-
-async def get_current_user(authorization: HTTPAuthorizationCredentials = Depends(security)) -> User:
-    token = authorization.credentials
+async def get_current_user(
+        authorization: HTTPAuthorizationCredentials = Depends(
+            HTTPBearer(auto_error=False)
+        )
+) -> User:
+    token = authorization.credentials # access_token
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
         user = await User.find_one(User.username == payload.get("sub"))
@@ -45,7 +46,7 @@ async def get_current_user(authorization: HTTPAuthorizationCredentials = Depends
 
 
 @user_router.post("/register/")
-async def register(user_in: UserIn):
+async def register(user_in: UserIn) -> dict[str, str]:
     user = await User.find_one(User.username == user_in.username)
     if user:
         raise HTTPException(status_code=400, detail="Username already registered")
@@ -82,5 +83,3 @@ async def logout(current_user: User = Depends(get_current_user)):
 @user_router.get("/users/me", response_model=User)
 async def get_current_user(user: dict = Depends(get_current_user)):
     return user
-
-
