@@ -12,6 +12,7 @@ from routes.chat import chat_router
 from typing import Dict
 
 from config.motor_connection import mongodb
+from config.redis import redisdb
 
 import asyncio
 import logging
@@ -42,6 +43,9 @@ async def read_root() -> Dict[str, str]:
 async def on_app_start():
     logger.info("서버 시작, mongo db 연결 시도")
     await mongodb.connect()
+    logger.info("서버 시작, redis db 연결 시도")
+    await redisdb.connect()
+
 
 
 @app.on_event("shutdown")
@@ -53,10 +57,16 @@ async def on_app_shutdown():
         logger.error("DB 연결 해제 중 에러 발생")
         raise
 
+    try:
+        await redisdb.close()
+    except asyncio.exceptions.CancelledError:
+        logger.error("Redis 연결 해제 중 에러 발생")
+        raise
+
 app.include_router(converter_router, prefix="/v1/video")
 
 app.include_router(crud_router, prefix="/v1/crud")
 
 app.include_router(user_router, prefix="/v1/user")
 
-app.include_router(chat_router, prefix="/v1/user")
+app.include_router(chat_router, prefix="/v1/user-chat")

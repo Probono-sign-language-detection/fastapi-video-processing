@@ -8,15 +8,20 @@ from typing import Optional, List, Any
 
 class VideoData(BaseModel):
     user_id: str
-    s3_uri: str
     sentence: str
 
 class VideoDataModel(Document, VideoData):
-
+    s3_uri: str
     # collection name을 여기서 지정가능
     class Settings:
         name = "video"
         use_revision = False
+
+class UserChatModel(Document, VideoData):
+    class Settings:
+        name = "user_chat"
+        use_revision = False
+
 
 class VideoDataUpdate(BaseModel):
     user_id: Optional[str] = None
@@ -32,12 +37,18 @@ class Database:
         await document.create()
         return 
     
-    async def get(self, id: PydanticObjectId) -> Any:
+    async def get_by_obj_id(self, id: PydanticObjectId) -> Any:
         doc = await self.model.get(id)
         if doc:
             return doc 
         return False
-    
+
+    async def get(self, query: dict) -> Any:
+        doc = await self.model.find_one(query)
+        if doc:
+            return doc
+        return False
+
     async def get_all(self) -> List[Any]:
         docs = await self.model.find_all().to_list()
         if docs:

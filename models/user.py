@@ -20,3 +20,10 @@ class UserIn(BaseModel):
 class UserOut(BaseModel):
     id: str
     username: str
+
+class CreateOTPRequest(BaseModel):
+    email: str
+
+class VerifyOTPRequest(BaseModel):
+    email: str
+    otp: int

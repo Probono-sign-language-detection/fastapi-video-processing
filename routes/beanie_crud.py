@@ -23,8 +23,8 @@ async def save_s3_uri_db(video_body: VideoData):
     }
 
 @crud_router.get("/get_video/{id}", response_model=VideoDataModel, status_code=200)
-async def get_video_data(id: PydanticObjectId) -> VideoDataModel:
-    video_data = await video_database.get(id)
+async def get_video_data_by_obj_id(id: PydanticObjectId) -> VideoDataModel:
+    video_data = await video_database.get_by_obj_id(id)
     
     if video_data:
         return video_data
