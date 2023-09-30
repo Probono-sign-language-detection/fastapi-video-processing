@@ -17,3 +17,4 @@ ffmpeg-python
 python-jose
 bcrypt
 redis
+aioredis

@@ -42,7 +42,7 @@ services:
   redis:
     image: redis:latest
     restart: on-failure
-    command: redis-server
+    command: redis-server --notify-keyspace-events Ex
     volumes:
       - redis-data:/data
     ports:

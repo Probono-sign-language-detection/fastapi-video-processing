@@ -48,5 +48,11 @@ class RedisDB:
     async def delete(self, key: str):
         await self.client.delete(key)
 
+    def pubsub(self):
+        return self.client.pubsub()
+
+    async def publish(self, channel: str, message: str):
+        await self.client.publish(channel, message)
+
 # Redis 디비 싱글톤 패턴
 redisdb = RedisDB()

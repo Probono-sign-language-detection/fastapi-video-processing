@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from config.websocket import websocket_manager
 from routes.video_converter import converter_router
 from routes.beanie_crud import crud_router
 from routes.user import user_router
@@ -61,6 +62,12 @@ async def on_app_shutdown():
         await redisdb.close()
     except asyncio.exceptions.CancelledError:
         logger.error("Redis 연결 해제 중 에러 발생")
+        raise
+
+    try:
+        await websocket_manager.close_all_connections()
+    except asyncio.exceptions.CancelledError:
+        logger.error("WebSocket 연결 해제 중 에러 발생")
         raise
 
 app.include_router(converter_router, prefix="/v1/video")

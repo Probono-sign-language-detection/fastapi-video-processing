@@ -1,3 +1,7 @@
+from starlette.websockets import WebSocket, WebSocketDisconnect
+
+from config.websocket import websocket_manager
+
 try:
     # fastapi
     from fastapi import APIRouter, Request, Depends, HTTPException, Query, Body, File, UploadFile
@@ -12,6 +16,8 @@ try:
     import os
 
     from models.video import VideoData, VideoDataModel, VideoDataUpdate, Database
+    from config.redis import redisdb
+
     from typing import List
 
     # 3rd party library 관련
@@ -87,7 +93,7 @@ async def store_file(
     username_decoded = jwt.decode(access_token, SECRET_KEY, algorithms=["HS256"])
     print(username_decoded.get("sub"))
 
-    username = username if username else username_decoded.get("sub")
+    inferred_username = username if username else username_decoded.get("sub")
 
     start_time = time.time()
     logging.info('video save start')
@@ -124,7 +130,7 @@ async def store_file(
                 print(f"video store took {loading_time} seconds")
 
                 save_data = {
-                    "user_id": username,
+                    "user_id": inferred_username,
                     "s3_uri": s3_uri,
                     "sentence": inferred_data
                 }
@@ -135,6 +141,13 @@ async def store_file(
                 await video_database.save(video_data)
 
                 print('saved to db')
+                print(inferred_username)
+                await redisdb.set(inferred_username, inferred_data)
+                print(f'saved to redis : key :{inferred_username}')
+
+                # redis_pubsub = redisdb.pubsub()
+                await redisdb.publish(channel=inferred_username, message=inferred_data)
+                print('published to redis')
 
                 # ObjectId를 문자열로 변환
                 data_dict = video_data.dict()
@@ -160,5 +173,4 @@ async def store_file(
             if os.path.exists(mov_file_path):
                 os.remove(mov_file_path)
             raise HTTPException(status_code=500, detail=f"Error during saving to s3: {e}")
-            
 
