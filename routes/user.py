@@ -22,6 +22,7 @@ from beanie.odm.fields import PydanticObjectId
 from models.user import User, UserIn, CreateOTPRequest, VerifyOTPRequest
 import os
 import random
+import uuid
 
 user_router = APIRouter()
 
@@ -30,6 +31,8 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
+def create_refresh_token() -> str:
+    return str(uuid.uuid4())
 
 def create_otp() -> int:
     return random.randint(1000, 9999)
@@ -78,16 +81,46 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     token_data = {"sub": user.username, "exp": expire}
     token = jwt.encode(token_data, SECRET_KEY, algorithm="HS256")
 
-    return {"access_token": token}
+    refresh_token_created = create_refresh_token()
+    await redisdb.set(refresh_token_created, form_data.username)
+    await redisdb.expire(refresh_token_created, 7 * 24 * 60 * 60)
+    # 7 days expiration for the refresh token
+
+    return {"access_token": token, "refresh_token": refresh_token_created}
 
 
 @user_router.post("/logout/")
-async def logout(current_user: User = Depends(get_current_user)):
+async def logout(
+        refresh_token: str,
+        current_user: User = Depends(get_current_user)
+):
     '''
     로그아웃 로직. JWT 토큰 기반 시스템에서는 클라이언트의 토큰을 만료시키거나 삭제하는 방식으로 처리.
     '''
+    await redisdb.delete(refresh_token)
+
     return {"msg": "Logout successful."}
 
+
+@user_router.post("/token/refresh/")
+async def refresh_token(
+        refresh_token: str
+):
+    redis_user_name = await redisdb.get(refresh_token)
+    print(redis_user_name)
+
+    if not redis_user_name:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    user = await User.find_one(User.username == redis_user_name)
+    if not user:
+        raise HTTPException(status_code=404, detail="User Not Found")
+
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    token_data = {"sub": user.username, "exp": expire}
+    new_access_token = jwt.encode(token_data, SECRET_KEY, algorithm="HS256")
+
+    return {"access_token": new_access_token}
 
 @user_router.get("/users/me", response_model=User)
 async def get_current_user(user: dict = Depends(get_current_user)):
