@@ -144,11 +144,14 @@ async def store_file(
                 print(inferred_username)
                 await redisdb.set(inferred_username, inferred_data)
                 print(f'saved to redis : key :{inferred_username}')
-
-                # redis_pubsub = redisdb.pubsub()
-                await redisdb.publish(channel=inferred_username, message=inferred_data)
-                print('published to redis')
-
+                
+                try:
+                    # redis_pubsub = redisdb.pubsub()
+                    await redisdb.publish(channel=inferred_username, message=inferred_data)
+                    print('published to redis')
+                except:
+                    pass
+                
                 # ObjectId를 문자열로 변환
                 data_dict = video_data.dict()
                 data_dict["id"] = str(data_dict["id"])

@@ -36,6 +36,7 @@ async def websocket_endpoint(
         websocket_manager.disconnect(websocket)
         await websocket_manager.broadcast(f"Client #{user_id} left the chat")
 
+
 @chat_router.websocket("/ws/chat/realtime/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
     await websocket_manager.connect(websocket)
@@ -46,15 +47,15 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
         while True:
             res = await pubsub.get_message(timeout=20)
             if res is not None:
-                print(f"res: {res}")
-                await websocket_manager.send_personal_message(f"You wrote: {res['data']}", websocket)
-
-            print("waiting message...")
-            time.sleep(3)
+                if res['type'] == 'message':
+                    print(f"res: {res}")
+                    await websocket_manager.send_personal_message(f"You wrote: {res['data']}", websocket)
+            await asyncio.sleep(3)
 
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
         await websocket_manager.broadcast(f"Client left the chat room: {user_id}")
+
 
 @chat_router.post("/chat/{user_id}/")
 async def send_message(user_id: str, sentence: str):

@@ -9,7 +9,6 @@ from routes.beanie_crud import crud_router
 from routes.user import user_router
 from routes.chat import chat_router
 
-
 from typing import Dict
 
 from config.motor_connection import mongodb
@@ -51,21 +50,23 @@ async def on_app_start():
 
 @app.on_event("shutdown")
 async def on_app_shutdown():
-    logger.info("서버 종료, mongo db 연결 해제")
     try:
         await mongodb.close()
+        logger.info("서버 종료, mongo db 연결 해제")
     except asyncio.exceptions.CancelledError:
         logger.error("DB 연결 해제 중 에러 발생")
         raise
-
+    
     try:
         await redisdb.close()
+        logger.info("서버 종료, redis db 연결 해제")
     except asyncio.exceptions.CancelledError:
         logger.error("Redis 연결 해제 중 에러 발생")
         raise
 
     try:
         await websocket_manager.close_all_connections()
+        logger.info("서버 종료, websocket 연결 해제")
     except asyncio.exceptions.CancelledError:
         logger.error("WebSocket 연결 해제 중 에러 발생")
         raise
