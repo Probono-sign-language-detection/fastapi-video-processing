@@ -1,11 +1,13 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status, WebSocket
-from starlette.websockets import WebSocketDisconnect
+from starlette.websockets import WebSocketDisconnect, WebSocketState
 
 from models.video import VideoData, VideoDataModel, VideoDataUpdate, UserChatModel, Database
 
 from config.redis import redisdb
 from config.websocket import websocket_manager
+from wsproto.utilities import LocalProtocolError
+
 from beanie import PydanticObjectId
 from typing import List
 import logging
@@ -13,9 +15,57 @@ import time
 import asyncio
 
 chat_router = APIRouter()
+
 # MongoDB 설정
 chat_database = Database(UserChatModel)
 logger = logging.getLogger(__name__)
+
+HEART_BEAT_INTERVAL = 5
+async def is_websocket_active(ws: WebSocket) -> bool:
+    if not (ws.application_state == WebSocketState.CONNECTED and ws.client_state == WebSocketState.CONNECTED):
+        return False
+    try:
+        await asyncio.wait_for(ws.send_json({'type': 'ping'}), HEART_BEAT_INTERVAL)
+        message = await asyncio.wait_for(ws.receive_json(), HEART_BEAT_INTERVAL)
+        assert message['type'] == 'pong'
+    except BaseException:  # asyncio.TimeoutError and ws.close()
+        return False
+    return True
+
+
+@chat_router.websocket("/ws/chat/realtime/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    await websocket_manager.connect(websocket)
+    
+    pubsub = None
+    try:
+        pubsub = redisdb.pubsub()
+        await pubsub.subscribe(user_id)
+
+        while True:
+            if websocket.client_state == WebSocketState.DISCONNECTED:
+                break
+            
+            # Ping the client to check if it's still connected
+            # try:
+            #     await websocket.send_text("ping")
+            # except LocalProtocolError as e:
+            #     raise WebSocketDisconnect()
+            res = await pubsub.get_message(timeout=20)
+            if res is not None:
+                if res['type'] == 'message':
+                    print(f"res: {res}")
+                    await websocket_manager.send_personal_message(f"You wrote: {res['data']}", websocket)
+            await asyncio.sleep(3)
+            
+    except WebSocketDisconnect:
+        websocket_manager.disconnect(websocket)
+        await websocket_manager.broadcast(f"Client left the chat room: {user_id}")
+    finally:
+        # Clean up Redis subscription
+        if pubsub:
+            await pubsub.close()
+            # await pubsub.unsubscribe(user_id)
 
 
 @chat_router.websocket("/ws/chat/{user_id}")
@@ -35,26 +85,6 @@ async def websocket_endpoint(
     except WebSocketDisconnect:
         websocket_manager.disconnect(websocket)
         await websocket_manager.broadcast(f"Client #{user_id} left the chat")
-
-
-@chat_router.websocket("/ws/chat/realtime/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: str):
-    await websocket_manager.connect(websocket)
-    try:
-        pubsub = redisdb.pubsub()
-        await pubsub.subscribe(user_id)
-
-        while True:
-            res = await pubsub.get_message(timeout=20)
-            if res is not None:
-                if res['type'] == 'message':
-                    print(f"res: {res}")
-                    await websocket_manager.send_personal_message(f"You wrote: {res['data']}", websocket)
-            await asyncio.sleep(3)
-
-    except WebSocketDisconnect:
-        websocket_manager.disconnect(websocket)
-        await websocket_manager.broadcast(f"Client left the chat room: {user_id}")
 
 
 @chat_router.post("/chat/{user_id}/")
