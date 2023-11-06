@@ -118,7 +118,7 @@ async def store_file(
             # mp4_file_path = file_path.replace('.mov', '.mp4')
             # _convert_mov_to_mp4(file_path, mp4_file_path)
             try:
-                s3_uri = _upload_to_s3(mov_file_path, 'bitamin-video-storage')
+                s3_uri = _upload_to_s3(mov_file_path, 'de-video-storage')
                 # inference
 
                 # inferred_data = requests.post("http://localhost:8000/inference/")

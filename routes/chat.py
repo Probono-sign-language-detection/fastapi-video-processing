@@ -33,58 +33,68 @@ async def is_websocket_active(ws: WebSocket) -> bool:
     return True
 
 
+@chat_router.websocket("/ws/chat/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    await websocket_manager.connect(websocket, user_id)
+    try:
+        while True:
+            # Before processing, check if the WebSocket connection is still active
+            if not await is_websocket_active(websocket):
+                break
+
+            user_data = await redisdb.get(user_id)
+            await asyncio.sleep(3)
+            
+            if user_data:
+                await websocket_manager.send_personal_message(f"You wrote: {user_data}", websocket)
+                await websocket_manager.broadcast(f"Client #{user_id} says: {user_data}")
+    except WebSocketDisconnect:
+        pass
+    finally:
+        websocket_manager.disconnect(websocket, user_id)
+        await websocket_manager.broadcast(f"Client #{user_id} left the chat")
+
+
+
 @chat_router.websocket("/ws/chat/realtime/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str):
-    await websocket_manager.connect(websocket)
+    await websocket_manager.connect(websocket, user_id)
     
     pubsub = None
+    client_disconnected = False
     try:
         pubsub = redisdb.pubsub()
         await pubsub.subscribe(user_id)
 
         while True:
+            # Check for disconnected state early and handle it
             if websocket.client_state == WebSocketState.DISCONNECTED:
+                client_disconnected = True
                 break
-            
-            # Ping the client to check if it's still connected
-            # try:
-            #     await websocket.send_text("ping")
-            # except LocalProtocolError as e:
-            #     raise WebSocketDisconnect()
+
             res = await pubsub.get_message(timeout=20)
-            if res is not None:
-                if res['type'] == 'message':
-                    print(f"res: {res}")
-                    await websocket_manager.send_personal_message(f"You wrote: {res['data']}", websocket)
+            if res is not None and res['type'] == 'message':
+                print(f"res: {res}")
+                # Gracefully send the message
+                try:
+                    if websocket.client_state == WebSocketState.CONNECTED:
+                        await websocket_manager.send_personal_message(f"You wrote: {res['data']}", websocket)
+                except WebSocketDisconnect:
+                    client_disconnected = True
+                    break
+
             await asyncio.sleep(3)
             
     except WebSocketDisconnect:
-        websocket_manager.disconnect(websocket)
-        await websocket_manager.broadcast(f"Client left the chat room: {user_id}")
+        client_disconnected = True
     finally:
+        # Clean up and broadcast
+        if client_disconnected:
+            websocket_manager.disconnect(websocket, user_id)
+            await websocket_manager.broadcast(f"Client {user_id} left the chat room")
         # Clean up Redis subscription
         if pubsub:
             await pubsub.close()
-            # await pubsub.unsubscribe(user_id)
-
-
-@chat_router.websocket("/ws/chat/{user_id}")
-async def websocket_endpoint(
-        websocket: WebSocket,
-        user_id: str):
-    await websocket_manager.connect(websocket)
-    try:
-        while True:
-            # data = await websocket.receive_text()
-            user_data = await redisdb.get(user_id)
-            time.sleep(3)
-            if user_data:
-                # await websocket.send_text(f"Data from Redis for {user_id}: {user_data}")
-                await websocket_manager.send_personal_message(f"You wrote: {user_data}", websocket)
-                await websocket_manager.broadcast(f"Client #{user_id} says: {user_data}")
-    except WebSocketDisconnect:
-        websocket_manager.disconnect(websocket)
-        await websocket_manager.broadcast(f"Client #{user_id} left the chat")
 
 
 @chat_router.post("/chat/{user_id}/")

@@ -70,6 +70,7 @@ async def on_app_shutdown():
     except asyncio.exceptions.CancelledError:
         logger.error("WebSocket 연결 해제 중 에러 발생")
         raise
+        
 
 app.include_router(converter_router, prefix="/v1/video")
 
